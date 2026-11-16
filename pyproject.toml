@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "domainfilter"
+version = "1.0.0"
+description = "Find available domains fast — paste comma-separated names, see availability and estimated prices, save filtered results."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "programmermunna" }]
+requires-python = ">=3.9"
+keywords = ["domain", "availability", "whois", "rdap", "cli", "filter"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Internet :: Name Service (DNS)",
+    "Topic :: Utilities",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/programmermunna/domainfilter"
+Issues = "https://github.com/programmermunna/domainfilter/issues"
+
+[project.scripts]
+domainfilter = "domainfilter.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["domainfilter*"]
