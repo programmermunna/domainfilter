@@ -42,11 +42,16 @@ domainfilter "domain_name, srijon" --tlds com,ai,io,dev
 domainfilter "domain_name.com, srijon.ai"
 
 # Read names from a file, or pipe them in
-domainfilter --input names.txt
+domainfilter --input input/names.txt
 cat names.txt | domainfilter
 
+# Multiple files at once — files, a folder, or a glob
+domainfilter -i input/a.txt input/b.txt
+domainfilter -i input/            # every .txt in the folder
+domainfilter -i "input/*.txt"     # same, via glob
+
 # Direct from files and tlds
-domainfilter -i names.txt --tlds com,ai,dev
+domainfilter -i input/names.txt --tlds com,ai,dev
 
 # Only print the available ones / machine-readable output
 domainfilter "domain_name" --quiet
@@ -84,15 +89,16 @@ saved → output/available.txt, output/taken.txt, output/unknown.txt, output/rep
 | `output/report.json` | Everything, machine-friendly |
 
 Files go in a directory named after your input: `-i names.txt` produces
-`output/names/available.txt`, `output/names/taken.txt`, etc. Re-filtering
-the same input clears its old output first — stale data from previous
-runs never lingers.
+`output/names/available.txt`, `output/names/taken.txt`, etc. A folder input
+uses the folder name (`output/input/` for `-i input/`), and multiple files
+or a glob land in `output/combined/`. Re-filtering the same input clears
+its old output first — stale data from previous runs never lingers.
 
 ## Options
 
 ```
 names                  comma-separated names or domains
--i, --input FILE       read names from a file
+-i, --input FILE(S)    read names from file(s), a folder, or a glob
 -t, --tlds LIST        TLDs to try (default: 16 popular ones)
 -o, --out-dir DIR      output folder (default: output/)
 --no-save              don't write result files

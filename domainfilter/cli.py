@@ -1,6 +1,7 @@
 """Command-line interface for domainfilter."""
 
 import argparse
+import glob
 import json
 import sys
 from pathlib import Path
@@ -31,7 +32,11 @@ def build_parser():
         epilog="example: domainfilter \"kormo, srijon, uddog\" --tlds com,ai,io",
     )
     p.add_argument("names", nargs="?", help="comma-separated names or domains")
-    p.add_argument("-i", "--input", metavar="FILE", help="read names from a file")
+    p.add_argument(
+        "-i", "--input", metavar="FILE", nargs="+",
+        help="read names from file(s) — files, a folder of .txt files, "
+        "or a glob like 'input/*.txt'",
+    )
     p.add_argument(
         "-t", "--tlds", metavar="LIST",
         help=f"comma-separated TLDs (default: {','.join(DEFAULT_TLDS)})",
@@ -50,19 +55,48 @@ def build_parser():
     return p
 
 
+def _resolve_inputs(entries):
+    """Turn -i entries (files, folders, glob patterns) into a path list."""
+    paths = []
+    for entry in entries:
+        p = Path(entry)
+        if p.is_dir():
+            paths.extend(sorted(p.glob("*.txt")))
+        elif glob.has_magic(entry):
+            paths.extend(
+                Path(m) for m in sorted(glob.glob(entry, recursive=True))
+            )
+        else:
+            paths.append(p)
+    return paths
+
+
 def _read_input(args, parser):
+    """Return (raw text, output stem) for the chosen input source."""
     if args.names and args.input:
         parser.error("give names on the command line OR --input, not both")
     if args.input:
-        try:
-            return Path(args.input).read_text()
-        except OSError as e:
-            parser.error(f"can't read {args.input}: {e}")
+        paths = _resolve_inputs(args.input)
+        if not paths:
+            parser.error(f"no files matched: {' '.join(args.input)}")
+        texts = []
+        for p in paths:
+            try:
+                texts.append(p.read_text())
+            except OSError as e:
+                parser.error(f"can't read {p}: {e}")
+        if len(paths) == 1:
+            stem = paths[0].stem
+        elif len(args.input) == 1 and Path(args.input[0]).is_dir():
+            stem = Path(args.input[0]).name
+        else:
+            stem = "combined"
+        return "\n".join(texts), stem
     if args.names:
-        return args.names
+        return args.names, None
     if not sys.stdin.isatty():
-        return sys.stdin.read()
-    parser.error("no input — pass comma-separated names, --input FILE, or pipe via stdin")
+        return sys.stdin.read(), None
+    parser.error("no input — pass comma-separated names, --input FILE(S), or pipe via stdin")
 
 
 def _status_color(status, use_color):
@@ -99,7 +133,7 @@ def _print_json(results):
 def main(argv=None, *, fetch=None):
     parser = build_parser()
     args = parser.parse_args(argv)
-    text = _read_input(args, parser)
+    text, stem = _read_input(args, parser)
     parsed = parse_names(text)
 
     for token in parsed.skipped:
@@ -140,7 +174,6 @@ def main(argv=None, *, fetch=None):
     )
 
     if not args.no_save:
-        stem = Path(args.input).stem if args.input else None
         paths = write_reports(results, args.out_dir, stem=stem)
         saved = ", ".join(f"{p}" for p in paths.values() if p)
         print(f"saved → {saved}")

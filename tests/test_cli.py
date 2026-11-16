@@ -48,6 +48,51 @@ class TestCliEndToEnd(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertIn("srijon.com", (out / "names" / "available.txt").read_text())
 
+    def test_input_multiple_files(self):
+        with tempfile.TemporaryDirectory() as d:
+            a = Path(d) / "a.txt"
+            b = Path(d) / "b.txt"
+            a.write_text("kormo\n")
+            b.write_text("google\n")
+            out = Path(d) / "out"
+            code = main(
+                ["-i", str(a), str(b), "--tlds", "com", "-o", str(out)],
+                fetch=fake_fetch,
+            )
+            self.assertEqual(code, 0)
+            combined = out / "combined"
+            self.assertIn("kormo.com", (combined / "available.txt").read_text())
+            self.assertIn("google.com", (combined / "taken.txt").read_text())
+
+    def test_input_folder_reads_txt_files(self):
+        with tempfile.TemporaryDirectory() as d:
+            inp = Path(d) / "inputs"
+            inp.mkdir()
+            (inp / "a.txt").write_text("kormo\n")
+            (inp / "b.txt").write_text("google\n")
+            (inp / "notes.md").write_text("shouldbeignored\n")
+            out = Path(d) / "out"
+            code = main(
+                ["-i", str(inp), "--tlds", "com", "-o", str(out)],
+                fetch=fake_fetch,
+            )
+            self.assertEqual(code, 0)
+            results = json.loads((out / "inputs" / "report.json").read_text())
+            self.assertEqual(len(results), 2)
+
+    def test_input_glob_pattern(self):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "a.txt").write_text("kormo\n")
+            (Path(d) / "b.txt").write_text("srijon\n")
+            out = Path(d) / "out"
+            code = main(
+                ["-i", str(Path(d) / "*.txt"), "--tlds", "com", "-o", str(out)],
+                fetch=fake_fetch,
+            )
+            self.assertEqual(code, 0)
+            results = json.loads((out / "combined" / "report.json").read_text())
+            self.assertEqual(len(results), 2)
+
     def test_json_output_file_has_statuses(self):
         with tempfile.TemporaryDirectory() as d:
             main(["kormo", "--tlds", "com", "-o", d], fetch=fake_fetch)
